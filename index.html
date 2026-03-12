@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+      body {
+        transition: background-color 0.6s ease;
+      }
+      .char {
+        display: inline-block;
+        transition:
+          opacity 0.05s ease,
+          transform 0.05s ease,
+          width 0.05s ease;
+        width: 0.6em;
+      }
+      .char.exit {
+        opacity: 0;
+        transform: translateX(-20px);
+        width: 0;
+      }
+      .char.enter {
+        opacity: 0;
+        transform: translateX(-20px);
+        width: 0;
+      }
+      .digit {
+        display: inline-block;
+        animation: slideIn 0.15s ease forwards;
+      }
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .digit.exit {
+        animation: slideOut 0.15s ease forwards;
+      }
+      @keyframes slideOut {
+        from {
+          opacity: 1;
+          transform: translateX(0);
+          max-width: 1em;
+        }
+        to {
+          opacity: 0;
+          transform: translateX(-20px);
+          max-width: 0;
+          overflow: hidden;
+        }
+      }
+      #key-display {
+        opacity: 0;
+      }
+      @keyframes shake {
+        0% {
+          transform: translateX(0);
+        }
+        15% {
+          transform: translateX(-10px);
+        }
+        30% {
+          transform: translateX(10px);
+        }
+        45% {
+          transform: translateX(-8px);
+        }
+        60% {
+          transform: translateX(8px);
+        }
+        75% {
+          transform: translateX(-4px);
+        }
+        90% {
+          transform: translateX(4px);
+        }
+        100% {
+          transform: translateX(0);
+        }
+      }
+      .shake {
+        animation: shake 0.5s ease;
+      }
+      @keyframes keyShake {
+        0% {
+          transform: translateX(0);
+        }
+        15% {
+          transform: translateX(-8px);
+        }
+        30% {
+          transform: translateX(8px);
+        }
+        45% {
+          transform: translateX(-6px);
+        }
+        60% {
+          transform: translateX(6px);
+        }
+        75% {
+          transform: translateX(-3px);
+        }
+        90% {
+          transform: translateX(3px);
+        }
+        100% {
+          transform: translateX(0);
+        }
+      }
+      #key-display.wrong-shake {
+        animation: keyShake 0.4s ease forwards;
+      }
+      @keyframes hintFadeUp {
+        0% {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: translateX(-50%) translateY(-16px);
+        }
+      }
+      #hint-display {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        pointer-events: none;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #fda4af;
+      }
+      #hint-display.flash {
+        animation: hintFadeUp 0.6s ease forwards;
+      }
+      .fade-in {
+        opacity: 0;
+        transform: translateY(10px);
+        transition:
+          opacity 0.6s ease,
+          transform 0.6s ease;
+      }
+      .fade-in.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      body.practice {
+        background-color: #ffffff;
+      }
+      body.practice #pi-display,
+      body.practice #key-display,
+      body.practice header {
+        color: #171717;
+      }
+      body.practice #stars {
+        color: #525252;
+      }
+      body.practice .gap-box {
+        background-color: rgba(100, 100, 100, 0.08);
+      }
+      #practice-ui {
+        position: fixed;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      #practice-ui.show {
+        display: flex;
+      }
+      #practice-streak {
+        display: flex;
+        gap: 4px;
+      }
+      .streak-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #d4d4d4;
+        transition: background 0.2s ease;
+      }
+      .streak-dot.filled {
+        background: #4ade80;
+      }
+      #setup-prompt {
+        position: fixed;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%) translateY(8px);
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 0.4s ease,
+          transform 0.4s ease;
+        white-space: nowrap;
+      }
+      #setup-prompt.visible {
+        opacity: 1;
+        pointer-events: all;
+        transform: translateX(-50%) translateY(0);
+      }
+      #setup-prompt-value {
+        font-weight: 700;
+        min-width: 1ch;
+        transition: opacity 0.15s ease;
+      }
+      #setup-prompt-value.flash-out {
+        opacity: 0;
+      }
+      @keyframes cheatPulse {
+        0%,
+        100% {
+          opacity: 0.2;
+          transform: scale(0.8);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.2);
+        }
+      }
+      #cheat-indicator {
+        position: absolute;
+        top: -2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 1.2rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: white;
+      }
+      #cheat-indicator.active {
+        opacity: 1;
+        animation: cheatPulse 1s ease-in-out infinite;
+      }
+
+      /* ── score ticker ── */
+      #score-ticker-wrap {
+        position: fixed;
+        bottom: 1.2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        overflow: hidden;
+        width: 18rem;
+        height: 1.8rem;
+        -webkit-mask-image: linear-gradient(
+          to right,
+          transparent 0%,
+          black 18%,
+          black 82%,
+          transparent 100%
+        );
+        mask-image: linear-gradient(
+          to right,
+          transparent 0%,
+          black 18%,
+          black 82%,
+          transparent 100%
+        );
+      }
+      #score-ticker {
+        display: flex;
+        align-items: center;
+        gap: 1.2rem;
+        will-change: transform;
+        position: absolute;
+        top: 50%;
+        /* horizontal position managed by JS translateX */
+        transform: translateY(-50%);
+      }
+      .ticker-num {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #525252;
+        opacity: 0.6;
+
+        width: 2ch;
+        text-align: center;
+        flex-shrink: 0;
+
+        transition:
+          color 0.35s ease,
+          opacity 0.35s ease,
+          font-size 0.25s ease,
+          transform 0.25s ease;
+
+        transform: scale(0.9);
+      }
+
+      .ticker-num.active {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #e5e5e5;
+        opacity: 1;
+        transform: scale(1.1);
+      }
+      body.practice .ticker-num {
+        color: #a3a3a3;
+      }
+      body.practice .ticker-num.active {
+        color: #171717;
+      }
+    </style>
+  </head>
+  <body class="bg-neutral-800 h-screen p-1 text-neutral-300 overflow-hidden">
+    <header class="fade-in top-0 w-full flex items-center justify-between p-3">
+      <h1>luvluvPi</h1>
+      <h1 id="mode-label">endless</h1>
+      <h1 id="score-count" style="display: none">0</h1>
+    </header>
+
+    <div
+      class="fade-in w-full h-full flex items-center justify-center select-none"
+      id="main-group"
+    >
+      <div class="w-full flex items-center justify-center">
+        <div
+          class="gap-box w-30 bg-neutral-700/10 py-25 mx-5 z-10 h-30 mb-3 relative flex items-center justify-center"
+        >
+          <span
+            id="cheat-indicator"
+            class="p-2 rounded-full bg-white"
+            style="animation: cheatPulse 1s ease-in-out infinite; display: none"
+          ></span>
+          <span id="hint-display"></span>
+          <span
+            id="key-display"
+            class="text-9xl font-semibold text-neutral-300"
+          ></span>
+          <div
+            id="pi-display"
+            class="absolute right-[105%] flex text-9xl font-semibold text-neutral-300 whitespace-nowrap"
+          >
+            <span id="base">~3.14</span>
+          </div>
+          <h1
+            id="stars"
+            class="absolute left-[105%] text-9xl font-semibold text-neutral-500 whitespace-nowrap"
+            style="
+              -webkit-mask-image: linear-gradient(
+                to right,
+                #737373 0%,
+                #262626 85%
+              );
+              mask-image: linear-gradient(to right, #737373 0%, #262626 85%);
+            "
+          ></h1>
+
+          <!-- score ticker at bottom of screen -->
+        </div>
+      </div>
+    </div>
+
+    <div id="score-ticker-wrap">
+      <div id="score-ticker"></div>
+    </div>
+
+    <div id="practice-ui"><div id="practice-streak"></div></div>
+    <div id="setup-prompt">
+      <span id="setup-prompt-text"></span>
+      <span id="setup-prompt-value"></span>
+    </div>
+
+    <script>
+      const PI =
+        "3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196";
+      const BASE_COUNT = 4;
+      let revealedCount = BASE_COUNT;
+
+      const starsEl = document.getElementById("stars");
+      const piDisplay = document.getElementById("pi-display");
+      const keyDisplay = document.getElementById("key-display");
+      const hintDisplay = document.getElementById("hint-display");
+      const modeLabel = document.getElementById("mode-label");
+      const practiceUI = document.getElementById("practice-ui");
+      const practiceStreak = document.getElementById("practice-streak");
+      const setupPrompt = document.getElementById("setup-prompt");
+      const setupPromptText = document.getElementById("setup-prompt-text");
+      const setupPromptValue = document.getElementById("setup-prompt-value");
+      const cheatIndicator = document.getElementById("cheat-indicator");
+      const scoreTicker = document.getElementById("score-ticker");
+
+      const wrongSound = new Audio("assets/wrong.wav");
+      const correctSound = new Audio("assets/correct.wav");
+      correctSound.preload = "auto";
+      wrongSound.preload = "auto";
+
+      let isShaking = false;
+      let isAnimating = false;
+      let keyDisplayTimeout = null;
+      let keyQueue = [];
+      let backspaceCount = 0;
+      let backspaceTimeout = null;
+      let cheatActive = false;
+      let scoreCount = 0;
+
+      let isPractice = false;
+      let practiceSetupStep = 0;
+      let practiceStart = 0;
+      let practiceLength = 0;
+      let practiceNeeded = 0;
+      let practiceStreakCount = 0;
+      let practiceEnd = 0;
+
+      const SHOW_DURATION = 50;
+      const FADE_DURATION = 50;
+
+      // ── score ticker ─────────────────────────────────────────
+      // ── score ticker ─────────────────────────────────────────
+      // The strip has TICKER_WINDOW*2+3 items. The middle item (index TICKER_WINDOW+1)
+      // is always the active score. The strip is translated so that middle item sits
+      // exactly centred in the wrap. On each step we slide by one STEP_PX then snap.
+      const TICKER_WINDOW = 3;
+      let STEP_PX = 50; // measured after first render
+
+      let tickerQueue = []; // queue of target score values
+      let tickerBusy = false;
+      let tickerCurrent = 0; // score currently shown centred in strip
+
+      function buildTicker() {
+        scoreTicker.innerHTML = "";
+        const total = TICKER_WINDOW * 2 + 3;
+        for (let i = 0; i < total; i++) {
+          const span = document.createElement("span");
+          span.classList.add("ticker-num");
+          scoreTicker.appendChild(span);
+        }
+        tickerCurrent = scoreCount;
+        // Initial snap (STEP_PX default used, re-measured below)
+        snapTicker();
+        requestAnimationFrame(() => {
+          const els = scoreTicker.querySelectorAll(".ticker-num");
+          if (els.length >= 2) {
+            const d =
+              els[1].getBoundingClientRect().left -
+              els[0].getBoundingClientRect().left;
+            if (d > 0) {
+              STEP_PX = d;
+              snapTicker();
+            }
+          }
+        });
+      }
+
+      // Populate labels centred on `center`, mark active
+      function fillTicker(center) {
+        const items = scoreTicker.querySelectorAll(".ticker-num");
+        const half = Math.floor(items.length / 2);
+        items.forEach((el, i) => {
+          el.textContent = center - half + i;
+          el.classList.toggle("active", i === half);
+        });
+      }
+
+      // Snap strip so active item is centred in wrap — no transition
+      function snapTicker() {
+        fillTicker(tickerCurrent);
+        const wrapW = scoreTicker.parentElement.offsetWidth;
+        const half = Math.floor(
+          scoreTicker.querySelectorAll(".ticker-num").length / 2,
+        );
+        const offset = wrapW / 2 - half * STEP_PX;
+        scoreTicker.style.transition = "none";
+        scoreTicker.style.transform = `translateX(${offset}px) translateY(-50%)`;
+      }
+
+      // Push score onto queue, start processing if idle
+      function tickerScrollTo(target) {
+        tickerQueue.push(target);
+        if (!tickerBusy) drainTicker();
+      }
+
+      function tickerSnapTo(target) {
+        tickerQueue = [];
+        tickerBusy = false;
+        scoreCount = target;
+        tickerCurrent = target;
+        const els = scoreTicker.querySelectorAll(".ticker-num");
+        if (els.length >= 2) {
+          const d =
+            els[1].getBoundingClientRect().left -
+            els[0].getBoundingClientRect().left;
+          if (d > 0) STEP_PX = d;
+        }
+        snapTicker();
+      }
+
+      function drainTicker() {
+        if (tickerQueue.length === 0) {
+          tickerBusy = false;
+          return;
+        }
+        tickerBusy = true;
+
+        const finalTarget = tickerQueue[tickerQueue.length - 1];
+        tickerQueue = [];
+
+        const direction =
+          finalTarget > tickerCurrent
+            ? 1
+            : finalTarget < tickerCurrent
+              ? -1
+              : 0;
+        if (direction === 0) {
+          tickerBusy = false;
+          return;
+        }
+
+        const duration = cheatActive ? 50 : 190;
+
+        snapTicker(); // set up labels + rest position
+
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            const wrapW = scoreTicker.parentElement.offsetWidth;
+            const half = Math.floor(
+              scoreTicker.querySelectorAll(".ticker-num").length / 2,
+            );
+            const restOffset = wrapW / 2 - half * STEP_PX;
+            const slideOffset = restOffset - direction * STEP_PX;
+
+            scoreTicker.style.transition = `transform ${duration}ms cubic-bezier(0.22, 0.8, 0.36, 1)`;
+            scoreTicker.style.transform = `translateX(${slideOffset}px) translateY(-50%)`;
+
+            setTimeout(() => {
+              tickerCurrent += direction;
+              scoreCount = tickerCurrent;
+              snapTicker();
+
+              if (tickerCurrent !== finalTarget) tickerQueue.push(finalTarget);
+              requestAnimationFrame(() => drainTicker());
+            }, duration + 4);
+          }),
+        );
+      }
+
+      window.addEventListener("load", () => {
+        document.querySelectorAll(".fade-in").forEach((el, i) => {
+          setTimeout(() => el.classList.add("visible"), 100 + i * 150);
+        });
+        buildTicker();
+      });
+
+      // ── cheat indicator ──────────────────────────────────────
+      function setCheat(active) {
+        cheatActive = active;
+        if (active) {
+          cheatIndicator.classList.add("active");
+          cheatIndicator.classList.remove("hidden");
+        } else {
+          cheatIndicator.classList.remove("active");
+          cheatIndicator.classList.add("hidden");
+        }
+      }
+
+      // ── stars ────────────────────────────────────────────────
+      function buildStars(count) {
+        starsEl.innerHTML = "";
+        for (let i = 0; i < count; i++) {
+          const span = document.createElement("span");
+          span.classList.add("char");
+          span.textContent = "*";
+          starsEl.appendChild(span);
+        }
+      }
+
+      function starsForState() {
+        if (isPractice) return practiceEnd - revealedCount;
+        return PI.length - revealedCount;
+      }
+
+      function syncStars() {
+        buildStars(starsForState());
+      }
+
+      function prependStars(count) {
+        for (let i = count - 1; i >= 0; i--) {
+          const span = document.createElement("span");
+          span.classList.add("char", "enter");
+          span.textContent = "*";
+          starsEl.insertBefore(span, starsEl.firstChild);
+          setTimeout(
+            () => requestAnimationFrame(() => span.classList.remove("enter")),
+            i * 25,
+          );
+        }
+      }
+
+      function removeFirstStar() {
+        const chars = starsEl.querySelectorAll(".char");
+        if (chars.length === 0) return;
+        const first = chars[0];
+        first.classList.add("exit");
+        setTimeout(() => first.remove(), 150);
+      }
+
+      // ── setup prompt ─────────────────────────────────────────
+      function showSetupPrompt(text, value) {
+        setupPromptText.textContent = text;
+        setupPromptValue.textContent = value || "";
+        setupPrompt.classList.add("visible");
+      }
+      function hideSetupPrompt(cb) {
+        setupPrompt.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+        setupPrompt.style.opacity = "0";
+        setupPrompt.style.transform = "translateX(-50%) translateY(8px)";
+        setTimeout(() => {
+          setupPrompt.classList.remove("visible");
+          setupPrompt.style.opacity = "";
+          setupPrompt.style.transform = "";
+          setupPrompt.style.transition = "";
+          if (cb) cb();
+        }, 300);
+      }
+      function flashSetupValue(val, cb) {
+        setupPromptValue.textContent = val;
+        setupPromptValue.classList.remove("flash-out");
+        void setupPromptValue.offsetWidth;
+        setTimeout(() => {
+          setupPromptValue.classList.add("flash-out");
+          setTimeout(() => {
+            setupPromptValue.classList.remove("flash-out");
+            if (cb) cb();
+          }, 150);
+        }, 300);
+      }
+      function enterPracticeSetup() {
+        practiceSetupStep = 1;
+        showSetupPrompt("practice length?", "");
+      }
+      function cancelSetup() {
+        practiceSetupStep = 0;
+        hideSetupPrompt();
+      }
+
+      // ── practice ─────────────────────────────────────────────
+      function updateStreakDots() {
+        practiceStreak.innerHTML = "";
+        for (let i = 0; i < practiceNeeded; i++) {
+          const dot = document.createElement("div");
+          dot.classList.add("streak-dot");
+          if (i < practiceStreakCount) dot.classList.add("filled");
+          practiceStreak.appendChild(dot);
+        }
+      }
+
+      function startPractice(length, needed) {
+        isPractice = true;
+        practiceStart = revealedCount;
+        practiceLength = length;
+        practiceNeeded = needed;
+        practiceStreakCount = 0;
+        practiceEnd = Math.min(practiceStart + practiceLength, PI.length);
+        document.body.classList.add("practice");
+
+        modeLabel.textContent = "practice";
+        practiceUI.classList.add("show");
+        updateStreakDots();
+        buildStars(practiceEnd - practiceStart);
+      }
+
+      function exitPractice() {
+        isPractice = false;
+        document.body.classList.remove("practice");
+
+        modeLabel.textContent = "endless";
+        practiceUI.classList.remove("show");
+        practiceSetupStep = 0;
+        syncStars();
+      }
+
+      function onPracticeSuccess() {
+        practiceStreakCount++;
+        updateStreakDots();
+        if (practiceStreakCount >= practiceNeeded) {
+          setTimeout(() => exitPractice(), 400);
+        } else if (practiceStreakCount === practiceNeeded - 1) {
+          resetPracticeTo(BASE_COUNT);
+        } else {
+          resetPracticeTo(practiceStart);
+        }
+      }
+
+      function resetPracticeTo(target) {
+        const allDigits = Array.from(piDisplay.querySelectorAll(".digit"));
+        const removeFrom = target - BASE_COUNT;
+        const toRemove = allDigits.slice(removeFrom);
+
+        animateOutDigits(toRemove, () => {
+          toRemove.forEach((d) => d.remove());
+          revealedCount = target;
+          buildStars(practiceEnd - target);
+        });
+      }
+
+      // ── key display ──────────────────────────────────────────
+      function flashHint(char) {
+        hintDisplay.textContent = char;
+        hintDisplay.className = "";
+        void hintDisplay.offsetWidth;
+        hintDisplay.classList.add("flash");
+      }
+
+      function flashKey(char, correct) {
+        clearTimeout(keyDisplayTimeout);
+        keyDisplay.style.transition = "none";
+        keyDisplay.style.transform = "translateY(0)";
+        keyDisplay.style.opacity = "1";
+        keyDisplay.className =
+          "text-9xl font-semibold " +
+          (correct
+            ? isPractice
+              ? "text-neutral-800"
+              : "text-neutral-300"
+            : "text-rose-300");
+        if (!correct) keyDisplay.classList.add("wrong-shake");
+        keyDisplay.textContent = char;
+      }
+
+      function showKey(char, correct, onFadedOut) {
+        clearTimeout(keyDisplayTimeout);
+        keyDisplay.textContent = char;
+        keyDisplay.style.transition = "none";
+        keyDisplay.style.transform = "translateY(0)";
+        keyDisplay.style.opacity = "1";
+        keyDisplay.className =
+          "text-9xl font-semibold " +
+          (correct
+            ? isPractice
+              ? "text-neutral-800"
+              : "text-neutral-300"
+            : "text-rose-300");
+        if (!correct) keyDisplay.classList.add("wrong-shake");
+        keyDisplayTimeout = setTimeout(() => {
+          keyDisplay.style.transition =
+            "opacity 0.2s ease, transform 0.2s ease";
+          keyDisplay.style.opacity = "0";
+          keyDisplay.style.transform = "translateY(20px)";
+          setTimeout(() => {
+            keyDisplay.textContent = "";
+            keyDisplay.style.transition = "none";
+            keyDisplay.style.opacity = "0";
+            keyDisplay.style.transform = "translateY(0)";
+            if (onFadedOut) onFadedOut();
+          }, FADE_DURATION);
+        }, SHOW_DURATION);
+      }
+
+      // ── digits ───────────────────────────────────────────────
+      function animateOutDigits(digits, onDone) {
+        if (digits.length === 0) {
+          onDone();
+          return;
+        }
+        digits.forEach((d, i) => {
+          setTimeout(
+            () => d.classList.add("exit"),
+            (digits.length - 1 - i) * 25,
+          );
+        });
+        setTimeout(onDone, (digits.length - 1) * 25 + 200);
+      }
+
+      function resetToStart() {
+        const digits = Array.from(piDisplay.querySelectorAll(".digit"));
+        const digitsRevealed = revealedCount - BASE_COUNT;
+        animateOutDigits(digits, () => {
+          digits.forEach((d) => d.remove());
+          revealedCount = BASE_COUNT;
+        });
+        setTimeout(() => prependStars(digitsRevealed), 150);
+        // Reset score ticker to 0
+        setTimeout(() => tickerSnapTo(0), 300);
+      }
+
+      const correctSounds = Array.from({ length: 10 }, () => {
+        const a = new Audio("assets/correct.wav");
+        a.preload = "auto";
+        return a;
+      });
+
+      let correctIndex = 0;
+
+      function playCorrect() {
+        const sound = correctSounds[correctIndex];
+        sound.currentTime = 0;
+        sound.play();
+        correctIndex = (correctIndex + 1) % correctSounds.length;
+      }
+
+      // ── queue ────────────────────────────────────────────────
+      function processQueue() {
+        if (isShaking || isAnimating || keyQueue.length === 0) return;
+        const limit = isPractice ? practiceEnd : PI.length;
+        if (revealedCount >= limit) return;
+
+        const key = keyQueue.shift();
+        const expected = PI[revealedCount];
+        const correct = key === expected;
+
+        flashKey(key, correct);
+
+        if (correct) {
+        //   const raga = correctSound.cloneNode();
+        //   raga.play();
+        playCorrect();
+
+          if (!isPractice) {
+            tickerScrollTo(scoreCount + 1);
+          }
+
+          isAnimating = true;
+          showKey(key, true, () => {
+            const span = document.createElement("span");
+            span.classList.add("digit");
+            span.textContent = key;
+            piDisplay.appendChild(span);
+            revealedCount++;
+            removeFirstStar();
+            isAnimating = false;
+            if (isPractice && revealedCount >= practiceEnd) {
+              onPracticeSuccess();
+            } else {
+              processQueue();
+            }
+          });
+        } else {
+          const raga = wrongSound.cloneNode();
+          raga.play();
+          isShaking = true;
+          isAnimating = true;
+          keyQueue = [];
+          flashHint(expected);
+          if (isPractice) {
+            practiceStreakCount = 0;
+            practiceEnd = Math.min(practiceStart + practiceLength, PI.length);
+            updateStreakDots();
+          }
+          showKey(key, false, () => {
+            isShaking = false;
+            isAnimating = false;
+          });
+          piDisplay.classList.add("shake");
+          setTimeout(() => {
+            piDisplay.classList.remove("shake");
+            if (isPractice) resetPracticeTo(practiceStart);
+            else resetToStart();
+          }, 500);
+        }
+      }
+
+      // ── keydown ──────────────────────────────────────────────
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          if (practiceSetupStep > 0) {
+            cancelSetup();
+            return;
+          }
+          if (isPractice) {
+            exitPractice();
+            return;
+          }
+          if (cheatActive) {
+            setCheat(false);
+            keyQueue = [];
+            return;
+          }
+          return;
+        }
+        if (practiceSetupStep === 1 && /^[1-9]$/.test(e.key)) {
+          practiceLength = parseInt(e.key);
+          flashSetupValue(e.key, () => {
+            setupPromptText.textContent = "streak needed?";
+            setupPromptValue.textContent = "";
+            practiceSetupStep = 2;
+          });
+          return;
+        }
+        if (practiceSetupStep === 2 && /^[1-9]$/.test(e.key)) {
+          const needed = parseInt(e.key);
+          flashSetupValue(e.key, () => {
+            hideSetupPrompt(() => {
+              practiceSetupStep = 0;
+              startPractice(practiceLength, needed);
+            });
+          });
+          return;
+        }
+        if (practiceSetupStep > 0) return;
+        if (e.key === "p" || e.key === "P") {
+          if (isPractice) {
+            exitPractice();
+            return;
+          }
+          enterPracticeSetup();
+          return;
+        }
+
+        if (e.key === "r" || e.key === "R") {
+          resetToStart();
+          return;
+        }
+
+        if (e.key === "Backspace") {
+          backspaceCount++;
+          clearTimeout(backspaceTimeout);
+          backspaceTimeout = setTimeout(() => {
+            backspaceCount = 0;
+          }, 600);
+          if (backspaceCount >= 3) {
+            backspaceCount = 0;
+            clearTimeout(backspaceTimeout);
+            setCheat(true);
+            for (let i = revealedCount; i < PI.length; i++)
+              keyQueue.push(PI[i]);
+            if (!isAnimating && !isShaking) processQueue();
+          }
+          return;
+        }
+        if (!/^[0-9.]$/.test(e.key)) return;
+        const limit = isPractice ? practiceEnd : PI.length;
+        if (revealedCount + keyQueue.length >= limit) return;
+        keyQueue.push(e.key);
+        if (!isAnimating && !isShaking) processQueue();
+      });
+
+      // ── init ─────────────────────────────────────────────────
+      syncStars();
+    </script>
+  </body>
+</html>
