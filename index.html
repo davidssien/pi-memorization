@@ -284,7 +284,6 @@
         will-change: transform;
         position: absolute;
         top: 50%;
-        /* horizontal position managed by JS translateX */
         transform: translateY(-50%);
       }
       .ticker-num {
@@ -318,6 +317,99 @@
       }
       body.practice .ticker-num.active {
         color: #171717;
+      }
+
+      /* ── command palette ── */
+      #cmd-bar {
+        position: fixed;
+        bottom: 1.4rem;
+        left: 50%;
+        transform: translateX(-50%) translateY(12px);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(30, 30, 30, 0.92);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        padding: 0.45rem 0.85rem;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        min-width: 220px;
+        z-index: 100;
+      }
+      #cmd-bar.visible {
+        opacity: 1;
+        pointer-events: all;
+        transform: translateX(-50%) translateY(0);
+      }
+      body.practice #cmd-bar {
+        background: rgba(240, 240, 240, 0.94);
+        border-color: rgba(0,0,0,0.1);
+        box-shadow: 0 4px 32px rgba(0,0,0,0.12);
+      }
+      #cmd-slash {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #737373;
+        user-select: none;
+        flex-shrink: 0;
+      }
+      body.practice #cmd-slash {
+        color: #a3a3a3;
+      }
+      #cmd-input {
+        background: transparent;
+        border: none;
+        outline: none;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #e5e5e5;
+        caret-color: #e5e5e5;
+        width: 180px;
+        font-family: inherit;
+      }
+      body.practice #cmd-input {
+        color: #171717;
+        caret-color: #171717;
+      }
+      #cmd-input::placeholder {
+        color: #525252;
+      }
+      body.practice #cmd-input::placeholder {
+        color: #a3a3a3;
+      }
+      #cmd-hint {
+        font-size: 0.72rem;
+        color: #525252;
+        margin-top: 0.15rem;
+        white-space: nowrap;
+        transition: color 0.2s ease;
+        padding-left: 1.5rem;
+      }
+      #cmd-hint.error {
+        color: #fda4af;
+      }
+      #cmd-hint.success {
+        color: #4ade80;
+      }
+      body.practice #cmd-hint {
+        color: #a3a3a3;
+      }
+      #cmd-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.1rem;
+      }
+      #cmd-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
       }
     </style>
   </head>
@@ -364,8 +456,6 @@
               mask-image: linear-gradient(to right, #737373 0%, #262626 85%);
             "
           ></h1>
-
-          <!-- score ticker at bottom of screen -->
         </div>
       </div>
     </div>
@@ -380,11 +470,23 @@
       <span id="setup-prompt-value"></span>
     </div>
 
+    <!-- Command bar -->
+    <div id="cmd-bar">
+      <div id="cmd-wrapper">
+        <div id="cmd-row">
+          <span id="cmd-slash">/</span>
+          <input id="cmd-input" type="text" placeholder="goto [n]  ·  p [length] [streak]" autocomplete="off" spellcheck="false" />
+        </div>
+        <div id="cmd-hint">try: goto 50 · p 3 3</div>
+      </div>
+    </div>
+
     <script>
       const PI =
-        "3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196";
+        "3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819644";
       const BASE_COUNT = 4;
       let revealedCount = BASE_COUNT;
+      let gotoOffset = 0; // digits permanently skipped via /goto
 
       const starsEl = document.getElementById("stars");
       const piDisplay = document.getElementById("pi-display");
@@ -398,6 +500,9 @@
       const setupPromptValue = document.getElementById("setup-prompt-value");
       const cheatIndicator = document.getElementById("cheat-indicator");
       const scoreTicker = document.getElementById("score-ticker");
+      const cmdBar = document.getElementById("cmd-bar");
+      const cmdInput = document.getElementById("cmd-input");
+      const cmdHint = document.getElementById("cmd-hint");
 
       const wrongSound = new Audio("assets/wrong.wav");
       const correctSound = new Audio("assets/correct.wav");
@@ -412,6 +517,7 @@
       let backspaceTimeout = null;
       let cheatActive = false;
       let scoreCount = 0;
+      let cmdOpen = false;
 
       let isPractice = false;
       let practiceSetupStep = 0;
@@ -424,17 +530,117 @@
       const SHOW_DURATION = 50;
       const FADE_DURATION = 50;
 
-      // ── score ticker ─────────────────────────────────────────
-      // ── score ticker ─────────────────────────────────────────
-      // The strip has TICKER_WINDOW*2+3 items. The middle item (index TICKER_WINDOW+1)
-      // is always the active score. The strip is translated so that middle item sits
-      // exactly centred in the wrap. On each step we slide by one STEP_PX then snap.
-      const TICKER_WINDOW = 3;
-      let STEP_PX = 50; // measured after first render
+      // ── command bar ──────────────────────────────────────────
+      function openCmd() {
+        cmdOpen = true;
+        cmdInput.value = "";
+        cmdHint.textContent = "try: goto 50";
+        cmdHint.className = "";
+        cmdBar.classList.add("visible");
+        setTimeout(() => cmdInput.focus(), 50);
+      }
 
-      let tickerQueue = []; // queue of target score values
+      function closeCmd() {
+        cmdOpen = false;
+        cmdBar.classList.remove("visible");
+        cmdInput.blur();
+      }
+
+      function runCmd(raw) {
+        const parts = raw.trim().split(/\s+/);
+        const cmd = parts[0].toLowerCase();
+
+        if (cmd === "goto") {
+          const n = parseInt(parts[1]);
+          if (isNaN(n) || n < 0) {
+            cmdHint.textContent = "invalid position";
+            cmdHint.className = "error";
+            cmdInput.value = "";
+            return;
+          }
+          cmdHint.textContent = `jumping to score ${n}…`;
+          cmdHint.className = "success";
+          setTimeout(() => closeCmd(), 600);
+          gotoJump(n);
+          return;
+        }
+
+        if (cmd === "p") {
+          const length = parseInt(parts[1]);
+          const needed = parseInt(parts[2]);
+          if (isNaN(length) || isNaN(needed) || length < 1 || needed < 1) {
+            cmdHint.textContent = "usage: p [length] [streak]";
+            cmdHint.className = "error";
+            cmdInput.value = "";
+            return;
+          }
+          cmdHint.textContent = `practice: ${length} digits, ${needed} streak`;
+          cmdHint.className = "success";
+          setTimeout(() => closeCmd(), 600);
+          startPractice(length, needed);
+          return;
+        }
+
+        cmdHint.textContent = `unknown command: ${cmd}`;
+        cmdHint.className = "error";
+        cmdInput.value = "";
+      }
+
+      cmdInput.addEventListener("keydown", (e) => {
+        e.stopPropagation();
+        if (e.key === "Escape") {
+          closeCmd();
+          return;
+        }
+        if (e.key === "Enter") {
+          runCmd(cmdInput.value);
+          return;
+        }
+      });
+
+      // ── goto jump ────────────────────────────────────────────
+      // n = score target (digits after 3.14); auto-types up to that point via cheat
+      function gotoJump(n) {
+        if (isPractice) exitPractice();
+        keyQueue = [];
+        isShaking = false;
+        isAnimating = false;
+
+        // First reset everything back to the very start
+        const digits = Array.from(piDisplay.querySelectorAll(".digit"));
+        animateOutDigits(digits, () => {
+          digits.forEach((d) => d.remove());
+          revealedCount = BASE_COUNT;
+          scoreCount = 0;
+          tickerSnapTo(0);
+          gotoOffset = n === 0 ? 0 : BASE_COUNT + n;
+
+          // Now cheat-fill up to score n
+          setCheat(true);
+          for (let i = revealedCount; i < BASE_COUNT + n && i < PI.length; i++) {
+            keyQueue.push(PI[i]);
+          }
+
+          // When cheat finishes, lock offset and turn off cheat
+          const checkDone = setInterval(() => {
+            if (revealedCount >= BASE_COUNT + n || revealedCount >= PI.length) {
+              clearInterval(checkDone);
+              setCheat(false);
+              keyQueue = [];
+            }
+          }, 50);
+
+          if (!isAnimating && !isShaking) processQueue();
+        });
+      }
+
+      // ── score ticker ─────────────────────────────────────────
+      const TICKER_WINDOW = 3;
+      let STEP_PX = 50;
+
+      let tickerQueue = [];
       let tickerBusy = false;
-      let tickerCurrent = 0; // score currently shown centred in strip
+      let tickerCurrent = 0;
 
       function buildTicker() {
         scoreTicker.innerHTML = "";
@@ -445,7 +651,6 @@
           scoreTicker.appendChild(span);
         }
         tickerCurrent = scoreCount;
-        // Initial snap (STEP_PX default used, re-measured below)
         snapTicker();
         requestAnimationFrame(() => {
           const els = scoreTicker.querySelectorAll(".ticker-num");
@@ -461,7 +666,6 @@
         });
       }
 
-      // Populate labels centred on `center`, mark active
       function fillTicker(center) {
         const items = scoreTicker.querySelectorAll(".ticker-num");
         const half = Math.floor(items.length / 2);
@@ -471,7 +675,6 @@
         });
       }
 
-      // Snap strip so active item is centred in wrap — no transition
       function snapTicker() {
         fillTicker(tickerCurrent);
         const wrapW = scoreTicker.parentElement.offsetWidth;
@@ -483,7 +686,6 @@
         scoreTicker.style.transform = `translateX(${offset}px) translateY(-50%)`;
       }
 
-      // Push score onto queue, start processing if idle
       function tickerScrollTo(target) {
         tickerQueue.push(target);
         if (!tickerBusy) drainTicker();
@@ -527,7 +729,7 @@
 
         const duration = cheatActive ? 50 : 190;
 
-        snapTicker(); // set up labels + rest position
+        snapTicker();
 
         requestAnimationFrame(() =>
           requestAnimationFrame(() => {
@@ -543,7 +745,6 @@
 
             setTimeout(() => {
               tickerCurrent += direction;
-              scoreCount = tickerCurrent;
               snapTicker();
 
               if (tickerCurrent !== finalTarget) tickerQueue.push(finalTarget);
@@ -681,11 +882,35 @@
       function exitPractice() {
         isPractice = false;
         document.body.classList.remove("practice");
-
         modeLabel.textContent = "endless";
         practiceUI.classList.remove("show");
         practiceSetupStep = 0;
-        syncStars();
+
+        // If revealedCount < practiceStart (e.g. after final gauntlet reset to BASE_COUNT),
+        // instantly fill in the missing digits up to practiceStart first, then animate nothing out.
+        // If revealedCount > practiceStart, animate the extra ones out.
+        // Either way, end up showing exactly practiceStart digits.
+        const currentDigits = Array.from(piDisplay.querySelectorAll(".digit"));
+        if (revealedCount < practiceStart) {
+          // Add missing digits instantly so the display shows practiceStart
+          for (let i = revealedCount; i < practiceStart; i++) {
+            const span = document.createElement("span");
+            span.classList.add("digit");
+            span.textContent = PI[i];
+            piDisplay.appendChild(span);
+          }
+          revealedCount = practiceStart;
+          syncStars();
+        } else if (revealedCount > practiceStart) {
+          const allDigits = Array.from(piDisplay.querySelectorAll(".digit"));
+          const toRemove = allDigits.slice(practiceStart - BASE_COUNT);
+          animateOutDigits(toRemove, () => {
+            toRemove.forEach(d => d.remove());
+            revealedCount = practiceStart;
+            syncStars();
+          });
+        }
+        tickerScrollTo(practiceStart - BASE_COUNT);
       }
 
       function onPracticeSuccess() {
@@ -781,15 +1006,19 @@
       }
 
       function resetToStart() {
-        const digits = Array.from(piDisplay.querySelectorAll(".digit"));
-        const digitsRevealed = revealedCount - BASE_COUNT;
-        animateOutDigits(digits, () => {
-          digits.forEach((d) => d.remove());
-          revealedCount = BASE_COUNT;
+        keyQueue = [];
+        const startIndex = gotoOffset || BASE_COUNT;
+        const startScore = gotoOffset ? gotoOffset - BASE_COUNT : 0;
+        const allDigits = Array.from(piDisplay.querySelectorAll(".digit"));
+        // only remove digits typed after the start point
+        const extraDigits = allDigits.slice(startIndex - BASE_COUNT);
+        const digitsRevealed = revealedCount - startIndex;
+        animateOutDigits(extraDigits, () => {
+          extraDigits.forEach((d) => d.remove());
+          revealedCount = startIndex;
         });
-        setTimeout(() => prependStars(digitsRevealed), 150);
-        // Reset score ticker to 0
-        setTimeout(() => tickerSnapTo(0), 300);
+        if (digitsRevealed > 0) setTimeout(() => prependStars(digitsRevealed), 150);
+        setTimeout(() => tickerSnapTo(startScore), 300);
       }
 
       const correctSounds = Array.from({ length: 10 }, () => {
@@ -820,12 +1049,11 @@
         flashKey(key, correct);
 
         if (correct) {
-        //   const raga = correctSound.cloneNode();
-        //   raga.play();
-        playCorrect();
+          playCorrect();
 
           if (!isPractice) {
-            tickerScrollTo(scoreCount + 1);
+            scoreCount++;
+            tickerScrollTo(scoreCount);
           }
 
           isAnimating = true;
@@ -851,25 +1079,39 @@
           keyQueue = [];
           flashHint(expected);
           if (isPractice) {
+            const wasInFinalGauntlet = practiceStreakCount === practiceNeeded - 1;
             practiceStreakCount = 0;
             practiceEnd = Math.min(practiceStart + practiceLength, PI.length);
             updateStreakDots();
+            showKey(key, false, () => { isShaking = false; isAnimating = false; });
+            piDisplay.classList.add("shake");
+            setTimeout(() => {
+              piDisplay.classList.remove("shake");
+              if (wasInFinalGauntlet) resetPracticeTo(BASE_COUNT);
+              else resetPracticeTo(practiceStart);
+            }, 500);
+          } else {
+            showKey(key, false, () => { isShaking = false; isAnimating = false; });
+            piDisplay.classList.add("shake");
+            setTimeout(() => {
+              piDisplay.classList.remove("shake");
+              resetToStart();
+            }, 500);
           }
-          showKey(key, false, () => {
-            isShaking = false;
-            isAnimating = false;
-          });
-          piDisplay.classList.add("shake");
-          setTimeout(() => {
-            piDisplay.classList.remove("shake");
-            if (isPractice) resetPracticeTo(practiceStart);
-            else resetToStart();
-          }, 500);
         }
       }
 
       // ── keydown ──────────────────────────────────────────────
       document.addEventListener("keydown", (e) => {
+        // If cmd bar is open, let its own handler deal with it
+        if (cmdOpen) return;
+
+        if (e.key === "/") {
+          e.preventDefault();
+          openCmd();
+          return;
+        }
+
         if (e.key === "Escape") {
           if (practiceSetupStep > 0) {
             cancelSetup();
@@ -886,32 +1128,11 @@
           }
           return;
         }
-        if (practiceSetupStep === 1 && /^[1-9]$/.test(e.key)) {
-          practiceLength = parseInt(e.key);
-          flashSetupValue(e.key, () => {
-            setupPromptText.textContent = "streak needed?";
-            setupPromptValue.textContent = "";
-            practiceSetupStep = 2;
-          });
-          return;
-        }
-        if (practiceSetupStep === 2 && /^[1-9]$/.test(e.key)) {
-          const needed = parseInt(e.key);
-          flashSetupValue(e.key, () => {
-            hideSetupPrompt(() => {
-              practiceSetupStep = 0;
-              startPractice(practiceLength, needed);
-            });
-          });
-          return;
-        }
-        if (practiceSetupStep > 0) return;
         if (e.key === "p" || e.key === "P") {
           if (isPractice) {
             exitPractice();
             return;
           }
-          enterPracticeSetup();
           return;
         }
 
