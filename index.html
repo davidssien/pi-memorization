@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1516940586870577"
+      crossorigin="anonymous"
+    ></script>
     <style>
       body {
         transition: background-color 0.6s ease;
@@ -329,15 +334,17 @@
         align-items: center;
         gap: 0.5rem;
         background: rgba(30, 30, 30, 0.92);
-        border: 1px solid rgba(255,255,255,0.08);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 10px;
         padding: 0.45rem 0.85rem;
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.18s ease, transform 0.18s ease;
+        transition:
+          opacity 0.18s ease,
+          transform 0.18s ease;
         min-width: 220px;
         z-index: 100;
       }
@@ -348,8 +355,8 @@
       }
       body.practice #cmd-bar {
         background: rgba(240, 240, 240, 0.94);
-        border-color: rgba(0,0,0,0.1);
-        box-shadow: 0 4px 32px rgba(0,0,0,0.12);
+        border-color: rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12);
       }
       #cmd-slash {
         font-size: 0.95rem;
@@ -475,7 +482,13 @@
       <div id="cmd-wrapper">
         <div id="cmd-row">
           <span id="cmd-slash">/</span>
-          <input id="cmd-input" type="text" placeholder="goto [n]  ·  p [length] [streak]" autocomplete="off" spellcheck="false" />
+          <input
+            id="cmd-input"
+            type="text"
+            placeholder="goto [n]  ·  p [length] [streak]"
+            autocomplete="off"
+            spellcheck="false"
+          />
         </div>
         <div id="cmd-hint">try: goto 50 · p 3 3</div>
       </div>
@@ -617,7 +630,11 @@
 
           // Now cheat-fill up to score n
           setCheat(true);
-          for (let i = revealedCount; i < BASE_COUNT + n && i < PI.length; i++) {
+          for (
+            let i = revealedCount;
+            i < BASE_COUNT + n && i < PI.length;
+            i++
+          ) {
             keyQueue.push(PI[i]);
           }
 
@@ -905,7 +922,7 @@
           const allDigits = Array.from(piDisplay.querySelectorAll(".digit"));
           const toRemove = allDigits.slice(practiceStart - BASE_COUNT);
           animateOutDigits(toRemove, () => {
-            toRemove.forEach(d => d.remove());
+            toRemove.forEach((d) => d.remove());
             revealedCount = practiceStart;
             syncStars();
           });
@@ -1017,7 +1034,8 @@
           extraDigits.forEach((d) => d.remove());
           revealedCount = startIndex;
         });
-        if (digitsRevealed > 0) setTimeout(() => prependStars(digitsRevealed), 150);
+        if (digitsRevealed > 0)
+          setTimeout(() => prependStars(digitsRevealed), 150);
         setTimeout(() => tickerSnapTo(startScore), 300);
       }
 
@@ -1079,11 +1097,15 @@
           keyQueue = [];
           flashHint(expected);
           if (isPractice) {
-            const wasInFinalGauntlet = practiceStreakCount === practiceNeeded - 1;
+            const wasInFinalGauntlet =
+              practiceStreakCount === practiceNeeded - 1;
             practiceStreakCount = 0;
             practiceEnd = Math.min(practiceStart + practiceLength, PI.length);
             updateStreakDots();
-            showKey(key, false, () => { isShaking = false; isAnimating = false; });
+            showKey(key, false, () => {
+              isShaking = false;
+              isAnimating = false;
+            });
             piDisplay.classList.add("shake");
             setTimeout(() => {
               piDisplay.classList.remove("shake");
@@ -1091,7 +1113,10 @@
               else resetPracticeTo(practiceStart);
             }, 500);
           } else {
-            showKey(key, false, () => { isShaking = false; isAnimating = false; });
+            showKey(key, false, () => {
+              isShaking = false;
+              isAnimating = false;
+            });
             piDisplay.classList.add("shake");
             setTimeout(() => {
               piDisplay.classList.remove("shake");
