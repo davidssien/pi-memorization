@@ -3,7 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <meta
+      name="description"
+      content="Free browser game for memorizing the digits of pi. How far can you get?"
+    />
+    <title>LuvPi - Pi Memorization Game</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script
       async
@@ -1192,5 +1196,42 @@
       // ── init ─────────────────────────────────────────────────
       syncStars();
     </script>
+    <!-- SEO & AdSense content — below the fold, doesn't affect gameplay -->
+    <section
+      style="
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 0;
+        overflow: hidden;
+        visibility: hidden;
+      "
+      aria-hidden="true"
+    >
+      <h2>luvluvPi — Pi Memorization Game</h2>
+      <p>
+        luvluvPi is a free browser game for memorizing the digits of π (pi).
+        Type the digits of pi in sequence and see how far you can get. Features
+        endless mode, practice mode with streak tracking, and a command palette
+        for jumping to any digit.
+      </p>
+      <p>
+        Pi (π) is the ratio of a circle's circumference to its diameter,
+        approximately equal to 3.14159265358979...
+      </p>
+      <h3>How to play</h3>
+      <p>
+        Type the digits of pi one at a time using your keyboard. A wrong digit
+        resets your progress. Use practice mode (/p) to drill specific sections
+        until you nail a streak. Press / to open the command palette.
+      </p>
+      <h3>Features</h3>
+      <p>
+        Endless mode, practice mode with configurable length and streak targets,
+        cheat mode for learning, score ticker, and animated digit display. Works
+        in all modern browsers with no installation required.
+      </p>
+    </section>
   </body>
 </html>
